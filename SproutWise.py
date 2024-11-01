@@ -122,7 +122,7 @@ curiozitati = [
 class AplicatieGradina:
     def __init__(self, root):
         self.root = root
-        self.root.title("Aplicație Avansată pentru Grădinărit")
+        self.root.title("SproutWise")
         self.root.configure(bg="#f0f8ff")  # Culoare de fundal personalizată
         self.setup_ui()
         self.incarca_plante()
