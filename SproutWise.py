@@ -1,6 +1,7 @@
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, messagebox
 import sqlite3
+import random
 
 # Listă de curiozități, se pot adăuga in continuare
 curiozitati = [
@@ -36,10 +37,14 @@ class AplicatieGradina:
         curiosities_label = tk.Label(content_frame, text="Curiosities", font=("Helvetica", 14, "bold"), bg="#f0f8ff", fg="#2e8b57")
         curiosities_label.grid(row=0, column=0, sticky="w", pady=5)
 
-        curiosities_text = tk.Text(content_frame, wrap="word", bg="#ffffff", fg="#000000", font=("Helvetica", 12))
-        curiosities_text.grid(row=1, column=0, pady=5, sticky="nsew")
-        curiosities_text.insert(tk.END, "\n".join(curiozitati))
-        curiosities_text.config(state=tk.DISABLED)
+        self.curiosities_text = tk.Text(content_frame, wrap="word", bg="#ffffff", fg="#000000", font=("Helvetica", 12))
+        self.curiosities_text.grid(row=1, column=0, pady=5, sticky="nsew")
+        self.curiosities_text.insert(tk.END, "\n".join(curiozitati))
+        self.curiosities_text.config(state=tk.DISABLED)
+
+        # Random Button for Curiosities
+        random_button = tk.Button(content_frame, text="Random Curiosity", command=self.show_random_curiosity, font=("Helvetica", 12), bg="#2e8b57", fg="#ffffff")
+        random_button.grid(row=2, column=0, pady=5)
 
         # Configure grid to make the text widget expand
         content_frame.grid_rowconfigure(1, weight=1)
@@ -47,7 +52,7 @@ class AplicatieGradina:
 
         # Buttons Section
         buttons_frame = tk.Frame(content_frame, bg="#f0f8ff")
-        buttons_frame.grid(row=2, column=0, pady=10)
+        buttons_frame.grid(row=3, column=0, pady=10)
 
         add_button = tk.Button(buttons_frame, text="Add Plant", font=("Helvetica", 12), bg="#2e8b57", fg="#ffffff", command=self.add_plant)
         add_button.grid(row=0, column=0, padx=5)
@@ -55,8 +60,11 @@ class AplicatieGradina:
         view_button = tk.Button(buttons_frame, text="View Plants", font=("Helvetica", 12), bg="#2e8b57", fg="#ffffff", command=self.view_plants)
         view_button.grid(row=0, column=1, padx=5)
 
+        delete_button = tk.Button(buttons_frame, text="Delete All", font=("Helvetica", 12), bg="#ff4d4d", fg="#ffffff", command=self.delete_all_plants)
+        delete_button.grid(row=0, column=2, padx=5)
+
         exit_button = tk.Button(buttons_frame, text="Exit", font=("Helvetica", 12), bg="#2e8b57", fg="#ffffff", command=self.root.quit)
-        exit_button.grid(row=0, column=2, padx=5)
+        exit_button.grid(row=0, column=3, padx=5)
 
     def setup_database(self):
         # Setup the database
@@ -98,16 +106,62 @@ class AplicatieGradina:
         view_window = tk.Toplevel(self.root)
         view_window.title("View Plants")
         view_window.geometry("400x300")
-        
+
+        # Scrollbar for viewing plants
+        view_frame = tk.Frame(view_window)
+        view_frame.pack(fill="both", expand=True)
+
+        canvas = tk.Canvas(view_frame)
+        scrollbar = ttk.Scrollbar(view_frame, orient="vertical", command=canvas.yview)
+        scrollable_frame = ttk.Frame(canvas)
+
+        scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+
         # Retrieve plant list from the database
-        self.cursor.execute('SELECT name, type FROM plants')
+        self.cursor.execute('SELECT id, name, type FROM plants')
         plants = self.cursor.fetchall()
-        
+
         for plant in plants:
-            tk.Label(view_window, text=f"Name: {plant[0]}, Type: {plant[1]}").pack(pady=5)
+            plant_label = tk.Label(scrollable_frame, text=f"Name: {plant[1]}, Type: {plant[2]}")
+            plant_label.pack(pady=5)
+            
+            # Add right-click delete option for each plant
+            plant_label.bind("<Button-3>", lambda e, plant_id=plant[0]: self.delete_plant(plant_id, plant_label))
+
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+
+    def delete_plant(self, plant_id, plant_label):
+        # Function to delete a specific plant
+        if messagebox.askyesno("Delete Plant", "Are you sure you want to delete this plant?"):
+            self.cursor.execute('DELETE FROM plants WHERE id = ?', (plant_id,))
+            self.conn.commit()
+            plant_label.destroy()  # Remove the label from the view
+            messagebox.showinfo("Deleted", "The plant has been deleted.")
+
+    def delete_all_plants(self):
+        # Confirm delete action
+        if messagebox.askyesno("Delete All", "Are you sure you want to delete all plant records?"):
+            self.cursor.execute('DELETE FROM plants')
+            self.conn.commit()
+            messagebox.showinfo("Deleted", "All plant records have been deleted.")
+
+    def show_random_curiosity(self):
+        # Display a random curiosity
+        random_fact = random.choice(curiozitati)
+        self.curiosities_text.config(state=tk.NORMAL)
+        self.curiosities_text.delete(1.0, tk.END)
+        self.curiosities_text.insert(tk.END, random_fact)
+        self.curiosities_text.config(state=tk.DISABLED)
 
     def incarca_plante(self):
-        # Function to load plants
+        # Function to load plants (if needed for other functionalities)
         pass
 
 # Example usage
